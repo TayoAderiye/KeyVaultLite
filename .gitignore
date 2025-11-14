@@ -1,0 +1,36 @@
+# .NET
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+*.user
+*.suo
+*.cache
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+**/node_modules/
+**/dist/
+**/.npm
+**/.vite
+
+# Environment
+.env
+.env.local
+*.log
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+data/
+
