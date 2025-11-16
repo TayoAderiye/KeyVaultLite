@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using KeyVaultLite.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace KeyVaultLite.Persistence.Configurations.VaultEntityConfiguration
@@ -15,4 +16,5 @@ namespace KeyVaultLite.Persistence.Configurations.VaultEntityConfiguration
             builder.ToTable("Environments", DatabaseSchemas.Vault);
         }
     }
+ 
 }

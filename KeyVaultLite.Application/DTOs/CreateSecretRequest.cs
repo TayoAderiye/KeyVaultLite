@@ -20,5 +20,7 @@ public class CreateSecretRequest
     
     [Required]
     public Guid EnvironmentId { get; set; }
+    [Required]
+    public Guid EncryptionKeyId { get; set; }
 }
 

@@ -13,6 +13,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyVaultLite.Persistence", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyVaultLite.Application", "KeyVaultLite.Application\KeyVaultLite.Application.csproj", "{658652AB-D94C-4DC7-A8BE-A8802D7B5E95}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyVaultLite.Persistence.SqlServer", "KeyVaultLite.Persistence.SqlServer\KeyVaultLite.Persistence.SqlServer.csproj", "{6ACF03D2-3651-496D-B8E9-FB27F6A241AD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyVaultLite.Persistence.PostgreSql", "KeyVaultLite.Persistence.PostgreSql\KeyVaultLite.Persistence.PostgreSql.csproj", "{3F6C2C45-1BD6-462A-90FA-608846F60B75}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyVaultLite.Persistence.Sqlite", "KeyVaultLite.Persistence.Sqlite\KeyVaultLite.Persistence.Sqlite.csproj", "{8ED813E6-55FC-4E01-96F3-D4E47F1FA60E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +45,18 @@ Global
 		{658652AB-D94C-4DC7-A8BE-A8802D7B5E95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{658652AB-D94C-4DC7-A8BE-A8802D7B5E95}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{658652AB-D94C-4DC7-A8BE-A8802D7B5E95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6ACF03D2-3651-496D-B8E9-FB27F6A241AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6ACF03D2-3651-496D-B8E9-FB27F6A241AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6ACF03D2-3651-496D-B8E9-FB27F6A241AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6ACF03D2-3651-496D-B8E9-FB27F6A241AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F6C2C45-1BD6-462A-90FA-608846F60B75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F6C2C45-1BD6-462A-90FA-608846F60B75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F6C2C45-1BD6-462A-90FA-608846F60B75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F6C2C45-1BD6-462A-90FA-608846F60B75}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8ED813E6-55FC-4E01-96F3-D4E47F1FA60E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8ED813E6-55FC-4E01-96F3-D4E47F1FA60E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8ED813E6-55FC-4E01-96F3-D4E47F1FA60E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8ED813E6-55FC-4E01-96F3-D4E47F1FA60E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

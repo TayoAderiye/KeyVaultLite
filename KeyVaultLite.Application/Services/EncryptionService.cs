@@ -7,31 +7,20 @@ namespace KeyVaultLite.Application.Services;
 
 public class EncryptionService : IEncryptionService
 {
-    private readonly byte[] _masterKey;
-
-    public EncryptionService(IConfiguration configuration)
+    //private readonly byte[] _masterKey;
+    public byte[] GenerateKey()
     {
-        var masterKeyString = configuration["MASTER_KEY"] 
-            ?? throw new InvalidOperationException("MASTER_KEY environment variable is required");
-        
-        // If the key is provided as hex string, convert it
-        if (masterKeyString.Length == 64) // 32 bytes = 64 hex characters
-        {
-            _masterKey = Convert.FromHexString(masterKeyString);
-        }
-        else
-        {
-            // Otherwise, derive a key from the passphrase using PBKDF2
-            var salt = Encoding.UTF8.GetBytes("KeyVaultLite-Salt-2024"); // Application-specific salt
-            using var pbkdf2 = new Rfc2898DeriveBytes(masterKeyString, salt, 100000, HashAlgorithmName.SHA256);
-            _masterKey = pbkdf2.GetBytes(32); // 32 bytes = 256 bits
-        }
+        var key = new byte[32]; // 256-bit key
+        RandomNumberGenerator.Fill(key);
+        return key;
     }
-
-    public (byte[] encryptedValue, byte[] iv) Encrypt(string plaintext)
+    public (byte[] encryptedValue, byte[] iv) Encrypt(string plaintext, byte[] key)
     {
         if (string.IsNullOrEmpty(plaintext))
             throw new ArgumentException("Plaintext cannot be null or empty", nameof(plaintext));
+
+        if (key is not { Length: 32 })
+            throw new ArgumentException("Key must be 32 bytes (256 bits)", nameof(key));
 
         var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
         var iv = new byte[12]; // 12 bytes (96 bits) for GCM
@@ -40,7 +29,7 @@ public class EncryptionService : IEncryptionService
         var tag = new byte[16]; // 128-bit authentication tag
         var ciphertext = new byte[plaintextBytes.Length];
         
-        using var aesGcm = new AesGcm(_masterKey);
+        using var aesGcm = new AesGcm(key);
         aesGcm.Encrypt(iv, plaintextBytes, ciphertext, tag);
         
         // Combine ciphertext + tag for storage
@@ -51,7 +40,7 @@ public class EncryptionService : IEncryptionService
         return (encryptedValue, iv);
     }
 
-    public string Decrypt(byte[] encryptedValue, byte[] iv)
+    public string Decrypt(byte[] encryptedValue, byte[] iv, byte[] key)
     {
         if (encryptedValue == null || encryptedValue.Length == 0)
             throw new ArgumentException("Encrypted value cannot be null or empty", nameof(encryptedValue));
@@ -67,7 +56,7 @@ public class EncryptionService : IEncryptionService
         
         var plaintext = new byte[ciphertext.Length];
         
-        using var aesGcm = new AesGcm(_masterKey);
+        using var aesGcm = new AesGcm(key);
         aesGcm.Decrypt(iv, ciphertext, tag, plaintext);
         
         return Encoding.UTF8.GetString(plaintext);

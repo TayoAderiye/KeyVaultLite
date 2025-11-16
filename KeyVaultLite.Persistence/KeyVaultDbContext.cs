@@ -16,6 +16,7 @@ namespace KeyVaultLite.Persistence
 
         public DbSet<Secret> Secrets { get; set; }
         public DbSet<Domain.Entities.Environment> Environments { get; set; }
+        public DbSet<EncryptionKey> EncryptionKeys { get; set; }
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             ChangeTracker.Entries()

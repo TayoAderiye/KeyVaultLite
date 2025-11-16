@@ -24,7 +24,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-
 await app.UseServicesAsync();
 
 await app.RunAsync();

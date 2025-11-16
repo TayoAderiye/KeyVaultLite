@@ -4,13 +4,20 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<UserSecretsId>d6527b62-ae8f-4b55-830d-6558a974ca8a</UserSecretsId>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\KeyVaultLite.Persistence.PostgreSql\KeyVaultLite.Persistence.PostgreSql.csproj" />
+		<ProjectReference Include="..\KeyVaultLite.Persistence.Sqlite\KeyVaultLite.Persistence.Sqlite.csproj" />
+		<ProjectReference Include="..\KeyVaultLite.Persistence.SqlServer\KeyVaultLite.Persistence.SqlServer.csproj" />
 		<ProjectReference Include="..\KeyVaultLite.Persistence\KeyVaultLite.Persistence.csproj" />
 	</ItemGroup>
 

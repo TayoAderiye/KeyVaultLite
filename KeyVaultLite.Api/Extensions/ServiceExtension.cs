@@ -1,4 +1,6 @@
 ﻿using KeyVaultLite.Application.Extension;
+using KeyVaultLite.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace KeyVaultLite.Api.Extensions
 {
@@ -24,9 +26,37 @@ namespace KeyVaultLite.Api.Extensions
             app.UseSiteCors();
             app.UseSiteSwagger();
             app.UseLoggerProvider();
-            //await app.MigrateDbContext();
+            await app.MigrateDbContext();
 
             return app;
+        }
+
+        public static async Task MigrateDbContext(this WebApplication app)
+        {
+            using var scope = app.Services.CreateScope();
+
+            var keyVaultDbContext = scope.ServiceProvider.GetService<KeyVaultDbContext>();
+
+            await keyVaultDbContext.Database.EnsureCreatedAsync();
+
+            var pendingMigrations = await keyVaultDbContext.Database.GetPendingMigrationsAsync();
+
+            if (pendingMigrations.Any())
+            {
+                await keyVaultDbContext.Database.MigrateAsync();
+            }
+
+            if (!await keyVaultDbContext.Environments.AnyAsync(e => e.Name.Equals("development", StringComparison.OrdinalIgnoreCase)))
+            {
+                await keyVaultDbContext.AddAsync(new Domain.Entities.Environment
+                {
+                    Name = "Development",
+                    Description = "Development environment for testing",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+                await keyVaultDbContext.SaveChangesAsync();
+            }
         }
     }
 }

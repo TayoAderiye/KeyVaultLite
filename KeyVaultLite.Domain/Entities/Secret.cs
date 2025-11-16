@@ -12,5 +12,7 @@ public class Secret : BaseEntity<Guid>
     public int Version { get; set; } = 1;
     public Guid EnvironmentId { get; set; }    
     public Environment? Environment { get; set; }
+    public Guid EncryptionKeyId { get; set; }
+    public EncryptionKey EncryptionKey { get; set; }
 }
 

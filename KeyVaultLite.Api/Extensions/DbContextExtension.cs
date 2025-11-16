@@ -25,13 +25,23 @@ namespace KeyVaultLite.Api.Extensions
                 switch (provider)
                 {
                     case var p when string.Equals(p, "sqlserver", StringComparison.OrdinalIgnoreCase):
-                        options.UseSqlServer(connectionString);
+                        options.UseSqlServer(connectionString, sql =>
+                        {
+                            sql.MigrationsAssembly("KeyVaultLite.Persistence.SqlServer");
+                        });
                         break;
                     case var p when string.Equals(p, "sqlite", StringComparison.OrdinalIgnoreCase):
-                        options.UseSqlite(connectionString);
+                        options.UseSqlite(connectionString, sqlite =>
+                        {
+                            sqlite.MigrationsAssembly("KeyVaultLite.Persistence.Sqlite");
+                        });
+
                         break;
                     case var p when string.Equals(p, "postgresql", StringComparison.OrdinalIgnoreCase):
-                        options.UseNpgsql(connectionString);
+                        options.UseNpgsql(connectionString, npgsql =>
+                        {
+                            npgsql.MigrationsAssembly("KeyVaultLite.Persistence.PostgreSql");
+                        });
                         break;
                     default:
                         throw new NotSupportedException($"Unsupported database provider: {provider}");
@@ -41,30 +51,6 @@ namespace KeyVaultLite.Api.Extensions
             });
 
             services.AddScoped<IKeyVaultDbContext, KeyVaultDbContext>();
-        }
-
-        public static async Task MigrateDbContext(this WebApplication app)
-        {
-            using var scope = app.Services.CreateScope();
-
-            var keyVaultDbContext = scope.ServiceProvider.GetService<KeyVaultDbContext>();
-            var envService = scope.ServiceProvider.GetRequiredService<IEnvironmentService>();
-
-            await keyVaultDbContext.Database.EnsureCreatedAsync();
-
-            await keyVaultDbContext.Database.MigrateAsync();
-
-            if (!await keyVaultDbContext.Environments.AnyAsync(e => e.Name.Equals("development", StringComparison.OrdinalIgnoreCase)))
-            {
-                await keyVaultDbContext.AddAsync(new Domain.Entities.Environment
-                {
-                    Name = "development",
-                    Description = "Development environment for testing",
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-                await keyVaultDbContext.SaveChangesAsync();
-            }
-        }
+        }       
     }
 }

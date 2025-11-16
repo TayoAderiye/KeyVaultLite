@@ -9,5 +9,6 @@ public interface ISecretService
     Task<SecretResponse> CreateSecretAsync(CreateSecretRequest request);
     Task<SecretResponse> UpdateSecretAsync(Guid environmentId, string name, UpdateSecretRequest request);
     Task<bool> DeleteSecretAsync(Guid environmentId, string name);
+    Task<SecretResponse> ReEncryptSecretWithNewKeyAsync(Guid secretId, Guid newEncryptionKeyId);
 }
 

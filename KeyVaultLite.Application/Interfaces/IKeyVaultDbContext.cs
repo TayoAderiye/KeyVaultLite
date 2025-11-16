@@ -7,6 +7,7 @@ namespace KeyVaultLite.Application.Interfaces
     {
         public DbSet<Secret> Secrets { get; set; }
         public DbSet<Domain.Entities.Environment> Environments { get; set; }
+        public DbSet<EncryptionKey> EncryptionKeys { get; set; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }
