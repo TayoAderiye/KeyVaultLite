@@ -20,7 +20,6 @@ namespace KeyVaultLite.Api.Controllers
         [Route(SecretsRoutes.ById)]
         public async Task<IActionResult> GetSecrets(Guid envId, Guid secretId, CancellationToken cancellationToken)
         {
-            //public const string ById = Base + "/{envId:guid}/{secretId:guid}";
             var response = await secretService.GetSecretAsync(envId, secretId, cancellationToken);
             if (response == null)
             {
