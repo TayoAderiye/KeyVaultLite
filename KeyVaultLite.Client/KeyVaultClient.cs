@@ -4,128 +4,203 @@ using KeyVaultLite.Client.Models;
 
 namespace KeyVaultLite.Client;
 
-public class KeyVaultClient
+public class KeyVaultClient : IKeyVaultClient
 {
+    private const string ApiPrefix = "api/v1/vault/";
     private readonly HttpClient _httpClient;
-    private readonly string _baseUrl;
 
     public KeyVaultClient(string baseUrl, HttpClient? httpClient = null)
     {
-        _baseUrl = baseUrl.TrimEnd('/');
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            throw new ArgumentException("Base URL is required", nameof(baseUrl));
+
         _httpClient = httpClient ?? new HttpClient();
-        _httpClient.BaseAddress = new Uri(_baseUrl);
+        _httpClient.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
     }
 
-    /// <summary>
-    /// List all secrets (metadata only, not values)
-    /// </summary>
-    public async Task<ListSecretsResponse> ListSecretsAsync(string? tag = null, string? search = null, CancellationToken cancellationToken = default)
-    {
-        var queryParams = new List<string>();
-        if (!string.IsNullOrEmpty(tag))
-            queryParams.Add($"tag={Uri.EscapeDataString(tag)}");
-        if (!string.IsNullOrEmpty(search))
-            queryParams.Add($"search={Uri.EscapeDataString(search)}");
+    #region Environments
 
-        var queryString = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : "";
-        var response = await _httpClient.GetAsync($"/api/secrets{queryString}", cancellationToken);
-        
+    public async Task<IReadOnlyList<EnvironmentInfo>> GetEnvironmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.GetAsync($"{ApiPrefix}environments", cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<ListSecretsResponse>(cancellationToken: cancellationToken)
-            ?? throw new InvalidOperationException("Failed to deserialize response");
+
+        var items = await response.Content.ReadFromJsonAsync<List<EnvironmentInfo>>(cancellationToken: cancellationToken);
+        return items ?? [];
     }
 
-    /// <summary>
-    /// Get a secret by name (includes decrypted value)
-    /// </summary>
-    public async Task<Secret> GetSecretAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<EnvironmentInfo?> GetEnvironmentByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(name))
-            throw new ArgumentException("Name cannot be null or empty", nameof(name));
-
-        var response = await _httpClient.GetAsync($"/api/secrets/{Uri.EscapeDataString(name)}", cancellationToken);
-        
+        var response = await _httpClient.GetAsync($"{ApiPrefix}environments/{id}", cancellationToken);
         if (response.StatusCode == HttpStatusCode.NotFound)
-            throw new KeyNotFoundException($"Secret with name '{name}' not found");
+            return null;
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken)
-            ?? throw new InvalidOperationException("Failed to deserialize response");
+        return await response.Content.ReadFromJsonAsync<EnvironmentInfo>(cancellationToken: cancellationToken);
     }
 
-    /// <summary>
-    /// Create a new secret
-    /// </summary>
+    public async Task<EnvironmentInfo?> GetEnvironmentByNameAsync(string name, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Environment name is required", nameof(name));
+
+        var encoded = Uri.EscapeDataString(name);
+        var response = await _httpClient.GetAsync($"{ApiPrefix}environments/{encoded}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<EnvironmentInfo>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<EnvironmentInfo> CreateEnvironmentAsync(string name, string? description = null, CancellationToken cancellationToken = default)
+    {
+        var payload = new
+        {
+            Name = name,
+            Description = description
+        };
+
+        var response = await _httpClient.PostAsJsonAsync($"{ApiPrefix}environments/create", payload, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return (await response.Content.ReadFromJsonAsync<EnvironmentInfo>(cancellationToken: cancellationToken))!;
+    }
+
+    #endregion
+
+    #region Encryption keys
+
+    public async Task<EncryptionKey> CreateEncryptionKeyAsync(string name, string? description = null, CancellationToken cancellationToken = default)
+    {
+        var payload = new
+        {
+            Name = name,
+            Description = description
+        };
+
+        var response = await _httpClient.PostAsJsonAsync($"{ApiPrefix}keys/create", payload, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return (await response.Content.ReadFromJsonAsync<EncryptionKey>(cancellationToken: cancellationToken))!;
+    }
+
+    public async Task<IReadOnlyList<EncryptionKey>> GetEncryptionKeysAsync(bool includeInactive = false, CancellationToken cancellationToken = default)
+    {
+        var url = $"{ApiPrefix}keys?includeInactive={includeInactive.ToString().ToLowerInvariant()}";
+        var response = await _httpClient.GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var items = await response.Content.ReadFromJsonAsync<List<EncryptionKey>>(cancellationToken: cancellationToken);
+        return items ?? [];
+    }
+
+    public async Task<EncryptionKey?> GetEncryptionKeyByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.GetAsync($"{ApiPrefix}keys/{id}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<EncryptionKey>(cancellationToken: cancellationToken);
+    }
+
+    #endregion
+
+    #region Secrets
+
+    public async Task<ListSecretsResponse> ListSecretsAsync(Guid environmentId, string? search = null, CancellationToken cancellationToken = default)
+    {
+        var url = $"{ApiPrefix}environments/{environmentId}/secrets";
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            url += $"?search={Uri.EscapeDataString(search)}";
+        }
+
+        var response = await _httpClient.GetAsync(url, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        return (await response.Content.ReadFromJsonAsync<ListSecretsResponse>(cancellationToken: cancellationToken))!;
+    }
+
+    public async Task<Secret?> GetSecretAsync(Guid environmentId, Guid secretId, CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.GetAsync($"{ApiPrefix}secrets/{environmentId}/{secretId}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<Secret?> GetSecretAsync(Guid environmentId, string name, CancellationToken cancellationToken = default)
+    {
+        var encodedName = Uri.EscapeDataString(name);
+        var response = await _httpClient.GetAsync($"{ApiPrefix}environments/{environmentId}/secrets/{encodedName}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<Secret?> RevealSecretAsync(Guid environmentId, Guid secretId, CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.GetAsync($"{ApiPrefix}secrets/{environmentId}/reveal/{secretId}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken);
+    }
+
+    public async Task<Secret?> RevealSecretAsync(Guid environmentId, string name, CancellationToken cancellationToken = default)
+    {
+        var encodedName = Uri.EscapeDataString(name);
+        var response = await _httpClient.GetAsync($"{ApiPrefix}environments/{environmentId}/secrets/{encodedName}/reveal", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken);
+    }
+
     public async Task<Secret> CreateSecretAsync(CreateSecretRequest request, CancellationToken cancellationToken = default)
     {
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
-
-        var response = await _httpClient.PostAsJsonAsync("/api/secrets", request, cancellationToken);
-        
-        if (response.StatusCode == HttpStatusCode.Conflict)
-            throw new InvalidOperationException($"Secret with name '{request.Name}' already exists");
-
+        var response = await _httpClient.PostAsJsonAsync($"{ApiPrefix}secrets/create", request, cancellationToken);
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken)
-            ?? throw new InvalidOperationException("Failed to deserialize response");
+
+        return (await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken))!;
     }
 
-    /// <summary>
-    /// Update an existing secret
-    /// </summary>
-    public async Task<Secret> UpdateSecretAsync(string name, UpdateSecretRequest request, CancellationToken cancellationToken = default)
+    public async Task<Secret> UpdateSecretAsync(Guid environmentId, Guid secretId, UpdateSecretRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(name))
-            throw new ArgumentException("Name cannot be null or empty", nameof(name));
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
+        var response = await _httpClient.PutAsJsonAsync(
+            $"{ApiPrefix}secrets/{environmentId}/{secretId}",
+            request,
+            cancellationToken);
 
-        var response = await _httpClient.PutAsJsonAsync($"/api/secrets/{Uri.EscapeDataString(name)}", request, cancellationToken);
-        
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken))!;
+    }
+
+    public async Task<bool> DeleteSecretAsync(Guid environmentId, string name, CancellationToken cancellationToken = default)
+    {
+        var encodedName = Uri.EscapeDataString(name);
+        var response = await _httpClient.DeleteAsync($"{ApiPrefix}secrets/{environmentId}/{encodedName}", cancellationToken);
+
         if (response.StatusCode == HttpStatusCode.NotFound)
-            throw new KeyNotFoundException($"Secret with name '{name}' not found");
-
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<Secret>(cancellationToken: cancellationToken)
-            ?? throw new InvalidOperationException("Failed to deserialize response");
-    }
-
-    /// <summary>
-    /// Delete a secret
-    /// </summary>
-    public async Task DeleteSecretAsync(string name, CancellationToken cancellationToken = default)
-    {
-        if (string.IsNullOrEmpty(name))
-            throw new ArgumentException("Name cannot be null or empty", nameof(name));
-
-        var response = await _httpClient.DeleteAsync($"/api/secrets/{Uri.EscapeDataString(name)}", cancellationToken);
-        
-        if (response.StatusCode == HttpStatusCode.NotFound)
-            throw new KeyNotFoundException($"Secret with name '{name}' not found");
-
-        response.EnsureSuccessStatusCode();
-    }
-
-    /// <summary>
-    /// Check if the API is healthy
-    /// </summary>
-    public async Task<bool> HealthCheckAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var response = await _httpClient.GetAsync("/health", cancellationToken);
-            return response.IsSuccessStatusCode;
-        }
-        catch
-        {
             return false;
-        }
+
+        return response.IsSuccessStatusCode;
     }
+
+    #endregion
 
     public void Dispose()
     {
-        _httpClient?.Dispose();
+        _httpClient.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
 

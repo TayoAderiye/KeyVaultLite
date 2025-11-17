@@ -6,5 +6,7 @@ public class CreateSecretRequest
     public string Value { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<string>? Tags { get; set; }
+    public Guid EnvironmentId { get; set; }
+    public Guid EncryptionKeyId { get; set; }
 }
 
