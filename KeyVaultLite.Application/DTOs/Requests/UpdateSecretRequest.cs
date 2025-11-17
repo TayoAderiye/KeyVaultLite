@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KeyVaultLite.Application.DTOs;
+namespace KeyVaultLite.Application.DTOs.Requests;
 
 public class UpdateSecretRequest
 {

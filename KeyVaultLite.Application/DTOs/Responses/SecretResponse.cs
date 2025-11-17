@@ -1,4 +1,4 @@
-namespace KeyVaultLite.Application.DTOs;
+namespace KeyVaultLite.Application.DTOs.Responses;
 
 public class SecretResponse
 {

@@ -1,5 +1,7 @@
-﻿using KeyVaultLite.Application.Interfaces;
+﻿using Google.Protobuf.WellKnownTypes;
+using KeyVaultLite.Application.Interfaces;
 using KeyVaultLite.Persistence;
+using KeyVaultLite.Persistence.Configurations;
 using Microsoft.EntityFrameworkCore;
 
 namespace KeyVaultLite.Api.Extensions
@@ -27,20 +29,27 @@ namespace KeyVaultLite.Api.Extensions
                     case var p when string.Equals(p, "sqlserver", StringComparison.OrdinalIgnoreCase):
                         options.UseSqlServer(connectionString, sql =>
                         {
-                            sql.MigrationsAssembly("KeyVaultLite.Persistence.SqlServer");
+                            sql.MigrationsAssembly(MigrationAssemblies.SqlServer);
+                            sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+                            sql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                            sql.MigrationsHistoryTable("__VaultMigrationsHistory", DatabaseSchemas.Vault);
                         });
                         break;
                     case var p when string.Equals(p, "sqlite", StringComparison.OrdinalIgnoreCase):
                         options.UseSqlite(connectionString, sqlite =>
                         {
-                            sqlite.MigrationsAssembly("KeyVaultLite.Persistence.Sqlite");
+                            sqlite.MigrationsAssembly(MigrationAssemblies.Sqlite);
+                            sqlite.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                            sqlite.MigrationsHistoryTable("__VaultMigrationsHistory", DatabaseSchemas.Vault);
                         });
-
                         break;
                     case var p when string.Equals(p, "postgresql", StringComparison.OrdinalIgnoreCase):
                         options.UseNpgsql(connectionString, npgsql =>
                         {
-                            npgsql.MigrationsAssembly("KeyVaultLite.Persistence.PostgreSql");
+                            npgsql.MigrationsAssembly(MigrationAssemblies.PostgreSql);
+                            npgsql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+                            npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                            npgsql.MigrationsHistoryTable("__VaultMigrationsHistory", DatabaseSchemas.Vault);
                         });
                         break;
                     default:

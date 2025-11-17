@@ -1,12 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace KeyVaultLite.Application.DTOs;
+namespace KeyVaultLite.Application.DTOs.Requests;
 
 public class CreateSecretRequest
 {
     [Required]
     [MaxLength(255)]
-    [RegularExpression(@"^[a-zA-Z0-9_-]+$", ErrorMessage = "Name can only contain alphanumeric characters, hyphens, and underscores")]
+    //[RegularExpression(@"^[a-zA-Z0-9_-]+$", ErrorMessage = "Name can only contain alphanumeric characters, hyphens, and underscores")]
     public string Name { get; set; } = string.Empty;
     
     [Required]

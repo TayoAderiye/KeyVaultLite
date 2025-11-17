@@ -1,6 +1,5 @@
 ﻿using KeyVaultLite.Application.Interfaces;
 using KeyVaultLite.Application.Services;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -35,6 +34,7 @@ namespace KeyVaultLite.Application.Extension
             services.AddScoped<IEnvironmentService, EnvironmentService>();
             services.AddScoped<ISecretService, SecretService>();
             services.AddScoped<IEncryptionService, EncryptionService>();
+            services.AddScoped<IEncryptionKeyService, EncryptionKeyService>();
         }
     }
 }

@@ -24,6 +24,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseRouting();
+app.UseSiteCors();
+
 await app.UseServicesAsync();
 
 await app.RunAsync();

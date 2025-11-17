@@ -23,7 +23,7 @@ namespace KeyVaultLite.Api.Extensions
             app.UseHealthChecks("/_health");
             app.UseAuthentication();
             app.UseAuthorization();
-            app.UseSiteCors();
+            //app.UseSiteCors();
             app.UseSiteSwagger();
             app.UseLoggerProvider();
             await app.MigrateDbContext();
@@ -37,8 +37,6 @@ namespace KeyVaultLite.Api.Extensions
 
             var keyVaultDbContext = scope.ServiceProvider.GetService<KeyVaultDbContext>();
 
-            await keyVaultDbContext.Database.EnsureCreatedAsync();
-
             var pendingMigrations = await keyVaultDbContext.Database.GetPendingMigrationsAsync();
 
             if (pendingMigrations.Any())
@@ -46,7 +44,7 @@ namespace KeyVaultLite.Api.Extensions
                 await keyVaultDbContext.Database.MigrateAsync();
             }
 
-            if (!await keyVaultDbContext.Environments.AnyAsync(e => e.Name.Equals("development", StringComparison.OrdinalIgnoreCase)))
+            if (!await keyVaultDbContext.Environments.AnyAsync(e => e.Name.ToLower() == "development"))
             {
                 await keyVaultDbContext.AddAsync(new Domain.Entities.Environment
                 {

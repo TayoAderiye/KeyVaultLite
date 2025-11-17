@@ -1,4 +1,5 @@
-﻿using KeyVaultLite.Application.DTOs;
+﻿using KeyVaultLite.Application.DTOs.Requests;
+using KeyVaultLite.Application.DTOs.Responses;
 using KeyVaultLite.Application.Interfaces;
 using KeyVaultLite.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ namespace KeyVaultLite.Application.Services;
 public class SecretService(IKeyVaultDbContext context, IEncryptionService encryptionService) : ISecretService
 {
 
-    public async Task<ListSecretsResponse> ListSecretsAsync(Guid environmentId, string? tag = null, string? search = null)
+    public async Task<ListSecretsResponse> ListSecretsAsync(Guid environmentId, string? tag = null, string? search = null, CancellationToken cancellationToken = default)
     {
         var query = context.Secrets
             .Where(s => s.EnvironmentId == environmentId);
@@ -28,7 +29,7 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
 
         var secrets = await query
             .OrderBy(s => s.Name)
-            .ToListAsync();
+            .ToListAsync(cancellationToken: cancellationToken);
 
         var summaries = secrets.Select(s => new SecretSummaryResponse
         {
@@ -48,11 +49,80 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         };
     }
 
-    public async Task<SecretResponse?> GetSecretAsync(Guid environmentId, string name)
+    public async Task<SecretResponse?> GetSecretAsync(Guid environmentId, string name, CancellationToken cancellationToken)
     {
         var secret = await context.Secrets
              .Include(s => s.EncryptionKey)
-            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId);
+            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId, cancellationToken: cancellationToken);
+
+        if (secret == null)
+            return null;
+
+        //var decryptedValue = encryptionService.Decrypt(secret.EncryptedValue, secret.EncryptionIV, secret.EncryptionKey.KeyBytes);
+
+        return new SecretResponse
+        {
+            Id = secret.Id,
+            Name = secret.Name,
+            //Value = decryptedValue,
+            Description = secret.Description,
+            Tags = ParseTags(secret.Tags),
+            CreatedAt = secret.CreatedAt,
+            UpdatedAt = secret.UpdatedAt,
+            Version = secret.Version
+        };
+    }
+    public async Task<SecretResponse?> GetSecretAsync(Guid environmentId, Guid id, CancellationToken cancellationToken)
+    {
+        var secret = await context.Secrets
+             .Include(s => s.EncryptionKey)
+            .FirstOrDefaultAsync(s => s.Id == id && s.EnvironmentId == environmentId, cancellationToken: cancellationToken);
+
+        if (secret == null)
+            return null;
+
+        //var decryptedValue = encryptionService.Decrypt(secret.EncryptedValue, secret.EncryptionIV, secret.EncryptionKey.KeyBytes);
+
+        return new SecretResponse
+        {
+            Id = secret.Id,
+            Name = secret.Name,
+            //Value = decryptedValue,
+            Description = secret.Description,
+            Tags = ParseTags(secret.Tags),
+            CreatedAt = secret.CreatedAt,
+            UpdatedAt = secret.UpdatedAt,
+            Version = secret.Version
+        };
+    }
+    public async Task<SecretResponse?> RevealSecretAsync(Guid environmentId, string name, CancellationToken cancellationToken)
+    {
+        var secret = await context.Secrets
+             .Include(s => s.EncryptionKey)
+            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId, cancellationToken: cancellationToken);
+
+        if (secret == null)
+            return null;
+
+        var decryptedValue = encryptionService.Decrypt(secret.EncryptedValue, secret.EncryptionIV, secret.EncryptionKey.KeyBytes);
+
+        return new SecretResponse
+        {
+            Id = secret.Id,
+            Name = secret.Name,
+            Value = decryptedValue,
+            Description = secret.Description,
+            Tags = ParseTags(secret.Tags),
+            CreatedAt = secret.CreatedAt,
+            UpdatedAt = secret.UpdatedAt,
+            Version = secret.Version
+        };
+    }
+    public async Task<SecretResponse?> RevealSecretAsync(Guid environmentId, Guid id, CancellationToken cancellationToken)
+    {
+        var secret = await context.Secrets
+             .Include(s => s.EncryptionKey)
+            .FirstOrDefaultAsync(s => s.Id == id && s.EnvironmentId == environmentId, cancellationToken: cancellationToken);
 
         if (secret == null)
             return null;
@@ -72,18 +142,18 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         };
     }
 
-    public async Task<SecretResponse> CreateSecretAsync(CreateSecretRequest request)
+    public async Task<SecretResponse> CreateSecretAsync(CreateSecretRequest request, CancellationToken cancellationToken)
     {
         // Check if secret already exists in this environment
         var exists = await context.Secrets
-            .AnyAsync(s => s.Name == request.Name && s.EnvironmentId == request.EnvironmentId);
+            .AnyAsync(s => s.Name == request.Name && s.EnvironmentId == request.EnvironmentId, cancellationToken: cancellationToken);
 
         if (exists)
             throw new InvalidOperationException($"Secret with name '{request.Name}' already exists in this environment");
 
         // 🔥 Load the encryption key the user selected
         var encryptionKey = await context.EncryptionKeys
-            .FirstOrDefaultAsync(k => k.Id == request.EncryptionKeyId && k.IsActive);
+            .FirstOrDefaultAsync(k => k.Id == request.EncryptionKeyId && k.IsActive, cancellationToken: cancellationToken);
 
         if (encryptionKey is null)
             throw new InvalidOperationException($"Encryption key '{request.EncryptionKeyId}' not found or inactive");
@@ -93,11 +163,11 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
 
         var secret = new Secret
         {
-            Id = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
             EncryptedValue = encryptedValue,
             EncryptionIV = iv,
+            EncryptionKey = encryptionKey,
             Tags = request.Tags != null ? JsonSerializer.Serialize(request.Tags) : null,
             EnvironmentId = request.EnvironmentId,
             CreatedAt = DateTime.UtcNow,
@@ -106,7 +176,7 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         };
 
         context.Secrets.Add(secret);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
         return new SecretResponse
         {
@@ -120,12 +190,12 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         };
     }
 
-    public async Task<SecretResponse> ReEncryptSecretWithNewKeyAsync(Guid secretId, Guid newEncryptionKeyId)
+    public async Task<SecretResponse> ReEncryptSecretWithNewKeyAsync(Guid secretId, Guid newEncryptionKeyId, CancellationToken cancellationToken)
     {
         // 1. Load the secret including its current encryption key
         var secret = await context.Secrets
             .Include(s => s.EncryptionKey)
-            .FirstOrDefaultAsync(s => s.Id == secretId) ?? throw new InvalidOperationException($"Secret with id '{secretId}' not found");
+            .FirstOrDefaultAsync(s => s.Id == secretId, cancellationToken: cancellationToken) ?? throw new InvalidOperationException($"Secret with id '{secretId}' not found");
 
         // 2. If it's already using that key, no point rotating
         if (secret.EncryptionKeyId == newEncryptionKeyId)
@@ -133,7 +203,7 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
 
         // 3. Load the new encryption key
         var newKey = await context.EncryptionKeys
-            .FirstOrDefaultAsync(k => k.Id == newEncryptionKeyId && k.IsActive) ?? throw new InvalidOperationException($"Encryption key '{newEncryptionKeyId}' not found or inactive");
+            .FirstOrDefaultAsync(k => k.Id == newEncryptionKeyId && k.IsActive, cancellationToken: cancellationToken) ?? throw new InvalidOperationException($"Encryption key '{newEncryptionKeyId}' not found or inactive");
 
         // (Optional) If you want to enforce same environment / tenant, check that here
 
@@ -157,7 +227,7 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         secret.UpdatedAt = DateTime.UtcNow;
         secret.Version += 1; // optional but nice
 
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
         // 7. Return updated DTO
         return new SecretResponse
@@ -172,11 +242,11 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         };
     }
 
-    public async Task<SecretResponse> UpdateSecretAsync(Guid environmentId, string name, UpdateSecretRequest request)
+    public async Task<SecretResponse> UpdateSecretAsync(Guid environmentId, string name, UpdateSecretRequest request, CancellationToken cancellationToken)
     {
         var secret = await context.Secrets
             .Include(s => s.EncryptionKey)
-            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId) ?? throw new KeyNotFoundException($"Secret with name '{name}' not found in this environment");
+            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId, cancellationToken: cancellationToken) ?? throw new KeyNotFoundException($"Secret with name '{name}' not found in this environment");
 
         // Update encrypted value if provided
         if (!string.IsNullOrEmpty(request.Value))
@@ -201,7 +271,7 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         secret.UpdatedAt = DateTime.UtcNow;
         secret.Version++;
 
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
         return new SecretResponse
         {
@@ -215,16 +285,16 @@ public class SecretService(IKeyVaultDbContext context, IEncryptionService encryp
         };
     }
 
-    public async Task<bool> DeleteSecretAsync(Guid environmentId, string name)
+    public async Task<bool> DeleteSecretAsync(Guid environmentId, string name, CancellationToken cancellationToken)
     {
         var secret = await context.Secrets
-            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId);
+            .FirstOrDefaultAsync(s => s.Name == name && s.EnvironmentId == environmentId, cancellationToken: cancellationToken);
 
         if (secret == null)
             return false;
 
         context.Secrets.Remove(secret);
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
 
         return true;
     }
