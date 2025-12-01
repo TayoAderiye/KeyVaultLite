@@ -6,10 +6,7 @@ namespace KeyVaultLite.Client
 {
     public static class KeyVaultLiteConfigurationExtensions
     {
-        public static async Task<WebApplicationBuilder> AddKeyVaultLiteAsync<TProgram>(
-            this WebApplicationBuilder builder,
-            Action<KeyVaultLiteOptions> configure,
-            CancellationToken ct = default)
+        public static async Task<WebApplicationBuilder> AddKeyVaultLiteAsync<TProgram>(this WebApplicationBuilder builder, Action<KeyVaultLiteOptions> configure, CancellationToken ct = default)
             where TProgram : class
         {
             ArgumentNullException.ThrowIfNull(builder);
@@ -31,7 +28,7 @@ namespace KeyVaultLite.Client
             string[]? prefixes = options.SecretNamePrefixes;
             if ((prefixes == null || prefixes.Length == 0) && !string.IsNullOrWhiteSpace(options.ProjectName))
             {
-                prefixes = new[] { options.ProjectName!.TrimEnd('/') + "/" }; // e.g. "Oracle/"
+                prefixes = [options.ProjectName!.TrimEnd('/') + "/"]; // e.g. "Oracle/"
             }
 
             // 1) Connect to KeyVaultLite
